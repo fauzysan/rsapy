@@ -1,110 +1,65 @@
-from math import sqrt
 import random
-from random import randint as rand
+import math
 
+def generate_keypair():
+    # Pilih dua bilangan prima acak, p dan q
+    p = generate_prime_number()
+    q = generate_prime_number()
 
-
-
-
-def gcd(a, b):
-    if b == 0:
-        return a
-    else:
-        return gcd(b, a % b)
-    
-def mod_inverse(a, m):
-    for x in range(1, m):
-        if (a * x) % m == 1:
-            return x
-        return -1
-
-def isprime(n):
-    if n < 2:
-        return False
-    elif n == 2:
-        return True
-    else:
-        for i in range(2, int(sqrt(n))+ 1, 2):
-            if n % i == 0:
-                return False
-        return True
-    
-p = rand(1, 1000)
-q = rand(1, 1000)
-
-def generate_key(p, q, keysize):
-
-    nMin = 1 << (keysize - 1)
-    nMax = (1 << keysize) - 1
-    primes = [2]
-
-    start = 1 << (keysize // 2 - 1)
-    stop = 1 << (keysize // 2 + 1)
-
-    if start >= stop:
-        return []
-    
-    for i in range(3, stop + 1, 2):
-        for p in primes:
-            if i % p == 0:
-                break
-            else:
-                primes.append(i)
-    
-    while (primes and primes[0] < start):
-        del primes[0]
-    
-    while primes:
-        p = random.choice(primes)
-        primes.remove(p)
-        q_values = [q for q in primes if nMin <= p * q <= nMax]
-        if q_values:
-            q = random.choice(q_values)
-            break
-    
-    print(p, q)
+    # Hitung n dan totient(n)
     n = p * q
-    phi = (p - 1) * (q - 1)
+    totient_n = (p - 1) * (q - 1)
 
-    e = random.randrange(1, phi)
-    g = gcd(e, phi)
-        
+    # Pilih bilangan e yang relatif prima terhadap totient(n)
+    e = choose_public_exponent(totient_n)
+
+    # Hitung kunci pribadi d
+    d = modular_inverse(e, totient_n)
+
+    return ((n, e), (n, d))
+
+def generate_prime_number():
+    # Fungsi ini dapat ditingkatkan untuk menghasilkan bilangan prima yang lebih besar
+    return random.choice([i for i in range(50, 200) if is_prime(i)])
+
+def is_prime(num):
+    if num < 2:
+        return False
+    for i in range(2, int(math.sqrt(num)) + 1):
+        if num % i == 0:
+            return False
+    return True
+
+def choose_public_exponent(totient_n):
+    # Pilih bilangan acak untuk e yang relatif prima terhadap totient(n)
     while True:
-        e = random.randrange(1, phi)
-        g = gcd(e, phi)
+        e = random.randint(2, totient_n - 1)
+        if math.gcd(e, totient_n) == 1:
+            return e
 
-        d = mod_inverse(e, phi)
-        if g == 1 and e != d:
-            break
-    
-    return ((e, n), (d, n))
-    
-def encrypt(msg_plaintext, package):
-    e, n = package
-    msg_ciphertext = [pow(ord(c), e, n) for c in msg_plaintext]
-    return msg_ciphertext
+def modular_inverse(a, m):
+    # Hitung invers modular dari a mod m menggunakan Algoritma Extended Euclidean
+    m0, x0, x1 = m, 0, 1
+    while a > 1:
+        q = a // m
+        m, a = a % m, m
+        x0, x1 = x1 - q * x0, x0
+    return x1 + m0 if x1 < 0 else x1
 
-# def decrypt(msg_ciphertext, package):
-#     d, n = package
-#     msg_plaintext = [chr(pow(c, d, n)) for c in msg_ciphertext]
-#     return (''.join(msg_plaintext))
+def encrypt(message, public_key):
+    n, e = public_key
+    cipher_text = [pow(ord(char), e, n) for char in message]
+    return cipher_text
 
-
-
-
+def decrypt(cipher_text, private_key):
+    n, d = private_key
+    decrypted_text = [chr(pow(char, d, n)) for char in cipher_text]
+    return ''.join(decrypted_text)
 
 if __name__ == "__main__":
-    panjang_bit = int(input("Masukan Panjang Bit: "))
-    print("Menjalankan RSA...")
-    print("Generate Key...")
-    public , private = generate_key(p, q, 2 ** panjang_bit)
-    print(f"Public Key: {public}")
-    print(f"Private Key: {private}")
-    msg = input("Masukan teks:")
-    print([ord(c) for c in msg])
-    encrypted_msg = encrypt(msg, public)
-    print("Teks Yang Terenkirpsi: ")
-
-    print(''.join(map(lambda x: str(x), encrypted_msg)))
-    # print("Teks Normal: ")
-    # print(decrypt(encrypted_msg, private))
+    public_key, private_key = generate_keypair()
+    msg = input("Masukan teks yang ingin di enkripsi: ")
+    encrypt_msg = encrypt(msg, public_key)
+    print(f"Pesan yang di enkripsi: {encrypt_msg}")
+    print(f"Public_Key: {public_key}")
+    print(f"Private_key: {private_key}")
